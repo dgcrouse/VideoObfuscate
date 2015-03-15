@@ -46,10 +46,10 @@ def transform_video(infile,outfile,num_passes=1):
     while frames_to_read:
         
         # Loop through n passes
-        for pass in xrange(num_passes):
+        for read_pass in xrange(num_passes):
             vcap.set(1,block_count * frame_width) # Rewind to beginning of pass. If first pass, does nothing
             
-            true_width = min(stripe_width*(pass+1),frame_width) - stripe_width * pass # Since we overestimate the pass width
+            true_width = min(stripe_width*(read_pass+1),frame_width) - stripe_width * read_pass # Since we overestimate the pass width
             
             # Read the frames
             for cnt in xrange(frame_width):
@@ -63,7 +63,7 @@ def transform_video(infile,outfile,num_passes=1):
                     frame = np.zeros([frame_height,frame_width,3],frames.dtype)
   
                 # Read slice of frame into output buffer.
-                frames[:,:true_width,cnt,:] = frame[:,stripe_width*pass:stripe_width*pass+true_width]
+                frames[:,:true_width,cnt,:] = frame[:,stripe_width*read_pass:stripe_width*read_pass+true_width]
 
             # Write next frames to output
             for i in xrange(true_width):
