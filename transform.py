@@ -1,6 +1,10 @@
 import numpy as np
 import cv2, sys
 
+# Define parameters for cv2.VideoCapture.get()
+height_param = 4
+width_param = 3
+fps_param = 5
 
 # Take an input video and apply the transformation
 # For each pass, read 1/num_passes columns from the input frames and write the same number of output frames
@@ -15,8 +19,8 @@ def transform_video(infile,outfile,num_passes=1):
     if vcap.open(infile) == -1:
         return
 
-    frame_height = int(vcap.get(4))
-    frame_width = int(vcap.get(3))
+    frame_height = int(vcap.get(height_param))
+    frame_width = int(vcap.get(width_param))
         
     # If too many passes specified, limit to number of columns
     if num_passes > frame_width:
@@ -24,7 +28,7 @@ def transform_video(infile,outfile,num_passes=1):
 
     # Prepare codec writer (AVI is best cross-platform)
     fourcc = cv2.cv.CV_FOURCC(*'XVID')
-    vwrite = cv2.VideoWriter(outfile,fourcc,vcap.get(5),(frame_width,frame_height))
+    vwrite = cv2.VideoWriter(outfile,fourcc,vcap.get(fps_param),(frame_width,frame_height))
 
     # Calculate number of columns to read per pass
     stripe_width = frame_width/num_passes
