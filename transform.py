@@ -50,7 +50,7 @@ def transform_video(infile,outfile,num_passes=1):
             vcap.set(1,block_count * frame_width) # Rewind to beginning of pass. If first pass, does nothing
             
             true_width = min(stripe_width*(read_pass+1),frame_width) - stripe_width * read_pass # Since we overestimate the pass width
-            
+            frames_to_read = True # So we don't cut off part of the last block
             # Read the frames
             for cnt in xrange(frame_width):
                 
@@ -77,4 +77,4 @@ def transform_video(infile,outfile,num_passes=1):
     
 
 if __name__ == "__main__":
-    transform_video('sintel.mp4','sintel_obfuscated.avi',4)
+    transform_video('sintel_obfuscated.avi','sintel_recovered.avi',4)
