@@ -21,7 +21,7 @@ coordinates are now frame coordinates and vice versa. If the time is not evenly 
 Since this would use a LOT of RAM on high-resolution videos, I implement a "pass" system. Each input frame is read n times, and only a chunk of (width/n) columns will be rotated to get the same number of frames. Each time
 through still reads (frame width) frames, though, to get the full movie width.
 
-As a proof of concept, I transformed Sintel, the Open Movie, (© copyright Blender Foundation | www.sintel.org) using my method. You can find the result here: (coming soon). Pass it back through the transformation to restore the video.
+As a proof of concept, I transformed Sintel, the Open Movie, (© copyright Blender Foundation | www.sintel.org) using my method. You can find the result here: https://www.youtube.com/watch?v=qO6ymAyPGcg. Download it in 720p (It MUST be this resolution or it won't work), then pass it back through the transformation to restore the video.
 
 Edit: YouTube changed the resolution, which made it impossible to de-obfuscate. Uploading fixed version soon
 
