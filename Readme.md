@@ -6,6 +6,12 @@ but which allows humans to get the gist of what is happening in the video. This 
 
 As an added bonus, the transform is fast (runs in ~4x realtime, at least from SSD), low-memory (used less than 400mb to convert a 1024x436 video), and relatively CPU-light (used 160% of a core on my quad-i7 2.5 ghz mobile)
 
+#Usage
+
+`python transform.py (input file name) (output file name.avi) (optional number of passes)`
+
+This transforms the input file into the output file in a given number of passes. Passes reduce memory usage but increase computation time. 4 works well for 720p, more are required for higher resolution. Input file can be mp4 or avi, output must be avi (for cross-platform compatability)
+
 #How It Works
 
 Video can be viewed as an image in 3 dimensions, the third being traditionally assigned to time. This method "chops" the data up into chunks along the time axis, with a time length the same as the width of the image.

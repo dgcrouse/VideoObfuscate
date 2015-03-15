@@ -1,5 +1,5 @@
 import numpy as np
-import cv2
+import cv2, sys
 
 
 # Take an input video and apply the transformation
@@ -77,4 +77,12 @@ def transform_video(infile,outfile,num_passes=1):
     
 
 if __name__ == "__main__":
-    transform_video('sintel_obfuscated.avi','sintel_recovered.avi',4)
+    if len(sys.argv) >= 3:
+        infile = sys.argv[1]
+        outfile = sys.argv[2]
+        if len(sys.argv) >= 4:
+            num_passes = int(sys.argv[3])
+        else:
+            num_passes = 4
+    
+        transform_video(infile,outfile,num_passes)
