@@ -6,6 +6,12 @@ but which allows humans to get the gist of what is happening in the video. This 
 
 As an added bonus, the transform is fast (runs in ~4x realtime, at least from SSD), low-memory (used less than 400mb to convert a 1024x436 video), and relatively CPU-light (used 160% of a core on my quad-i7 2.5 ghz mobile)
 
+# Dependencies
+
+OpenCV: http://opencv.org/ - This will be going away if I can help it.
+
+Numpy: http://www.numpy.org/
+
 #Usage
 
 Can call `python transform.py` or simply `transform.py`
@@ -38,9 +44,9 @@ Video can be viewed as an image in 3 dimensions, the third being traditionally a
 These chunks are then rotated about the x-axis so that the former y-axis is the new time axis. This results in a video in which each frame is a single scanline across a certain number of frames. Put another way, the old column
 coordinates are now frame coordinates and vice versa. If the time is not evenly divided into chunks, remaining columns are filled with black.
 
-Since this would use a LOT of RAM on high-resolution videos, I implement a "pass" system. Each input frame is read n times, and only a chunk of (width/n) columns will be rotated to get the same number of frames. Each time
+Since this would use a LOT of RAM on high-resolution videos, I implemented a "pass" system. Each input frame is read n times, and only a chunk of (width/n) columns will be rotated to get the same number of frames. Each time
 through still reads (frame width) frames, though, to get the full movie width.
 
 As a proof of concept, I transformed Sintel, the Open Movie, (© copyright Blender Foundation | www.sintel.org) using my method. You can find the result here: https://www.youtube.com/watch?v=qO6ymAyPGcg. Download it in 720p (It MUST be this resolution or it won't work), then pass it back through the transformation to restore the video.
 
-Audio support is coming soon.
+Audio support is coming soon. 
