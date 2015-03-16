@@ -8,9 +8,29 @@ As an added bonus, the transform is fast (runs in ~4x realtime, at least from SS
 
 #Usage
 
-`python transform.py (input file name) (output file name.avi) (optional number of passes)`
+Can call `python transform.py` or simply `transform.py`
 
-This transforms the input file into the output file in a given number of passes. Passes reduce memory usage but increase computation time. 4 works well for 720p, more are required for higher resolution. Input file can be mp4 or avi, output must be avi (for cross-platform compatability)
+`transform.py [-h] [--passes PASSES] [--start START] [--end END] [--decode] infile outfile`
+
+Obfuscate or De-Obfuscate a video. Obfuscates by default.
+
+positional arguments:
+
+infile                File to process - must be .avi,.mp4, or .m4v (only .avi on some systems)
+
+outfile               Output file name - must be .avi
+
+optional arguments:
+  
+-h, --help            show this help message and exit
+  
+--passes PASSES, -p PASSES  Number of passes to make over input data. More means less memory but slower
+  
+--start START, -s START Timecode to start encoding at (default 0). Form HH:MM:SS:FF (FF is frame within second)
+  
+--end END, -e END     Timecode to stop at (default end of video). Form HH:MM:SS:FF (FF is frame within second)
+  
+--decode, -d          Set this flag if you are de-obfuscating a video with custom start/stop. Otherwise frames will be mis-aligned
 
 #How It Works
 
@@ -22,7 +42,5 @@ Since this would use a LOT of RAM on high-resolution videos, I implement a "pass
 through still reads (frame width) frames, though, to get the full movie width.
 
 As a proof of concept, I transformed Sintel, the Open Movie, (© copyright Blender Foundation | www.sintel.org) using my method. You can find the result here: https://www.youtube.com/watch?v=qO6ymAyPGcg. Download it in 720p (It MUST be this resolution or it won't work), then pass it back through the transformation to restore the video.
-
-Edit: YouTube changed the resolution, which made it impossible to de-obfuscate. Uploading fixed version soon
 
 Audio support is coming soon.
