@@ -16,7 +16,7 @@ Numpy: http://www.numpy.org/
 
 Can call `python transform.py` or simply `transform.py`
 
-`transform.py [-h] [--passes PASSES] [--start START] [--end END] [--decode] infile outfile`
+`transform.py [-h] [--passes PASSES] [--start START] [--end END] [--decode] [--noaudio] infile outfile`
 
 Obfuscate or De-Obfuscate a video. Obfuscates by default.
 
@@ -24,7 +24,7 @@ positional arguments:
 
 infile                File to process - must be .avi,.mp4, or .m4v (only .avi on some systems)
 
-outfile               Output file name - must be .avi
+outfile               Output file name - must be .avi or .m4v (for some reason .mp4 trips up OpenCV)
 
 optional arguments:
   
@@ -38,6 +38,8 @@ optional arguments:
   
 --decode, -d          Set this flag if you are de-obfuscating a video with custom start/stop. Otherwise frames will be mis-aligned
 
+--noaudio             Set this flag to disable audio copying
+
 #How It Works
 
 Video can be viewed as an image in 3 dimensions, the third being traditionally assigned to time. This method "chops" the data up into chunks along the time axis, with a time length the same as the width of the image.
@@ -48,5 +50,3 @@ Since this would use a LOT of RAM on high-resolution videos, I implemented a "pa
 through still reads (frame width) frames, though, to get the full movie width.
 
 As a proof of concept, I transformed Sintel, the Open Movie, (© copyright Blender Foundation | www.sintel.org) using my method. You can find the result here: https://www.youtube.com/watch?v=qO6ymAyPGcg. Download it in 720p (It MUST be this resolution or it won't work), then pass it back through the transformation to restore the video.
-
-Audio support is coming soon. 
