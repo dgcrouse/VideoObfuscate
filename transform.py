@@ -27,7 +27,7 @@ def difference_to_ffmpeg(t1,t2,framerate):
 # If is_encoding is true, encoding will begin a new block at the start frame. Otherwise, it will assume that the frame is in the middle of a block.
 # start_time and stop_time are lists [seconds,frames_within_second]
 # Note that this value only matters for partial extraction
-def transform_video(infile,outfile,num_passes=4,is_encoding=True,start_time=[],stop_time=[],encode_audio=True):
+def transform_video(infile,outfile,num_passes=4,is_encoding=True,start_time=[],stop_time=[],encode_audio=True,verbose=False):
     
     import numpy as np
     import cv2
@@ -49,6 +49,7 @@ def transform_video(infile,outfile,num_passes=4,is_encoding=True,start_time=[],s
     if num_passes > frame_width:
         num_passes = frame_width #SLOW
 
+    inext = infile.split('.')[-1]
     outext = outfile.split('.')[-1]
 
     # Prepare codec writer (AVI is best cross-platform)
@@ -63,7 +64,6 @@ def transform_video(infile,outfile,num_passes=4,is_encoding=True,start_time=[],s
         return
         
     tmpfile = 'obfuscate_tmp.{0}'.format(outext)
-    print tmpfile
     output_writer = cv2.VideoWriter(tmpfile if encode_audio else outfile,fourcc,fps,(frame_width,frame_height))
 
     if (start_time != [] and start_time[1] > fps) or (stop_time != [] and stop_time[1] > fps):
@@ -72,6 +72,11 @@ def transform_video(infile,outfile,num_passes=4,is_encoding=True,start_time=[],s
 
     start_frame = int(start_time[0] * fps) + start_time[1] if start_time != [] else 0
     stop_frame = int(stop_time[0] * fps) + 1 + stop_time[1] if stop_time != [] else -1 # to include the stop frame
+    
+    if verbose:
+        print 'Start frame: {0}'.format(start_frame)
+        if stop_frame > 0:
+            print 'Stop frame: {0}'.format(stop_frame)
     
     if stop_frame > 0 and stop_frame <= start_frame:
         return
@@ -97,6 +102,9 @@ def transform_video(infile,outfile,num_passes=4,is_encoding=True,start_time=[],s
     # Here, we read the first frame to get the dtype for the matrix
     frames = np.zeros([frame_height,pass_width,frame_width,3],input_reader.read()[1].dtype)
     frames_to_read = True
+    
+    if verbose:
+        print 'Converting...'
 
     while frames_to_read and (stop_frame < 0 or block_count * frame_width + global_offset < stop_frame):
         
@@ -135,22 +143,65 @@ def transform_video(infile,outfile,num_passes=4,is_encoding=True,start_time=[],s
     output_writer.release()
     
     if encode_audio:
+        if verbose:
+            print 'Copying audio...'
+        
         import subprocess, os
         if 'win32' in sys.platform:
-            audio_command = ['ffmpeg.exe']
+            ffmpeg_bin = 'ffmpeg.exe'
         else:
-            audio_command = ['ffmpeg']
+            ffmpeg_bin = 'ffmpeg'
+            
+        audio_command = [ffmpeg_bin]
         if start_time != []:
             audio_command += ['-ss',time_frame_to_ffmpeg(start_time,fps)]
         if stop_time != []:    
-            audio_command += ['-t', difference_to_ffmpeg(start_time,stop_time,fps)]
+            duration = difference_to_ffmpeg(start_time,stop_time,fps)
+            audio_command += ['-t', duration]
         
-        audio_command += ['-i',infile,'-i', tmpfile, '-map', '1:v', '-map', '0:a', '-c:a',
-                            'mp3' if outext == 'avi' else 'aac', '-c:v', 'copy', 
-                            '-strict', '-2', '-loglevel', 'error', '-y', outfile]
+        audio_command += ['-i',infile,'-i', tmpfile, '-map', '1:v', '-map', '0:a']
+        
+        if inext == outext:
+            audio_command += ['-c:a','copy']
+        elif outext == 'avi':
+            audio_command += ['-c:a','mp3', '-b:a', '192k']
+        else:
+            
+            # Check what AAC codecs are installed
+            found_fdk = False
+            found_faac = False
+            
+            p = subprocess.Popen([ffmpeg_bin,'-codecs'],stdout=subprocess.PIPE)
+            codecs,_ = subprocess.communicate()
+            
+            for line in codecs:
+                data = line.split()
+                if len(data) < 3:
+                    continue
+                else:
+                    if 'libfdk_aac' in data[1]:
+                        found_fdk = True
+                        break
+                    elif 'libfaac' in data[1]:
+                        found_faac = True
+            
+            if found_fdk:
+                # FDK AAC, best
+                audio_command += ['-c:a','libfdk_aac', '-b:a', '192k',]
+            elif found_faac:
+                # FAAC, better
+                audio_command += ['-c:a','libfaac', '-b:a', '192k',]
+            else:
+                # Experimental AAC, OK
+                audio_command += ['-c:a','aac', '-b:a', '192k', '-strict', '-2']
+        
+        if not verbose:
+            audio_command += ['-loglevel', 'error']
+        
+        audio_command += ['-c:v', 'copy', '-write_xing', '0', '-y', outfile]
                             
         subprocess.call(audio_command)
-        os.remove(tmpfile)
+        #os.remove(tmpfile)
 
 def valid_vidfile(string):
     valid_extensions = ['.mp4','.m4v','.avi']
@@ -185,6 +236,7 @@ if __name__ == "__main__":
     stop_help = 'Timecode to stop at (default end of video). Form HH:MM:SS:FF (FF is frame within second)'
     decode_help = 'Set this flag if you are de-obfuscating a video with custom start/stop. Otherwise frames will be mis-aligned'
     noaudio_help = 'Set this flag to disable audio copying'
+    verbose_help = 'Set this flag to enable verbose output'
     
     parser.add_argument('infile',action='store', type=valid_vidfile, help=infile_help)
     parser.add_argument('outfile',action='store', type=valid_vidfile, help=outfile_help)
@@ -193,6 +245,7 @@ if __name__ == "__main__":
     parser.add_argument('--end', '-e', action='store', type=valid_timecode, default=[],help=stop_help)
     parser.add_argument('--decode' ,'-d',action='store_false',dest='encode',help=decode_help) # Actually stores whether we are encoding or decoding
     parser.add_argument('--noaudio',action='store_false',dest='audio',help=noaudio_help)
+    parser.add_argument('--verbose','-v',action='store_true',help=verbose_help)
     args = parser.parse_args()
     
-    transform_video(args.infile,args.outfile,args.passes,args.encode,args.start,args.end,args.audio)
+    transform_video(args.infile,args.outfile,args.passes,args.encode,args.start,args.end,args.audio,args.verbose)

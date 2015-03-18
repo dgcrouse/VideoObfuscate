@@ -12,11 +12,15 @@ OpenCV: http://opencv.org/ - This will be going away if I can help it.
 
 Numpy: http://www.numpy.org/
 
+ffmpeg: http://www.ffmpeg.org/
+
 #Usage
 
-Can call `python transform.py` or simply `transform.py`
+NOTE: Audio support is experimental and uses the ffmpeg binary. If output is .m4v, duration of the output video will be reported incorrectly. Also, if using .m4v output, will use best available audio codec between libfdk\_aac, libfaac, and experimental ffmpeg AAC.
 
-`transform.py [-h] [--passes PASSES] [--start START] [--end END] [--decode] [--noaudio] infile outfile`
+You can call `python transform.py` or simply `transform.py`
+
+`transform.py [-h] [--passes PASSES] [--start START] [--end END] [--decode] [--noaudio] [--verbose] infile outfile`
 
 Obfuscate or De-Obfuscate a video. Obfuscates by default.
 
@@ -39,6 +43,8 @@ optional arguments:
 --decode, -d          Set this flag if you are de-obfuscating a video with custom start/stop. Otherwise frames will be mis-aligned
 
 --noaudio             Set this flag to disable audio copying
+
+--verbose             Set this flag to enable verbose output from ffmpeg
 
 #How It Works
 
