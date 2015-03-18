@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-import argparse
+import argparse, sys
 
 # Define parameters for cv2.VideoCapture.get()
 height_param = 4
@@ -8,12 +8,29 @@ width_param = 3
 fps_param = 5
 current_frame_param = 1
 
+def time_frame_to_ffmpeg(time,framerate):
+    return '{0:02d}:{1:02d}:{2:02d}.{3:03d}'.format(time[0]/3600,(time[0]%3600)/60,time[0]%60,int(time[1]*1000/framerate))
+
+
+def difference_to_ffmpeg(t1,t2,framerate):
+    elapsed_seconds = t2[0]-t1[0]
+    elapsed_frames = t2[1]-t1[1]
+    
+    if elapsed_frames < 0:
+        elapsed_seconds -= 1
+        elapsed_frames += framerate
+    return time_frame_to_ffmpeg([elapsed_seconds,elapsed_frames],framerate)
+
 # Take an input video and apply the transformation
 # For each pass, read 1/num_passes columns from the input frames and write the same number of output frames
 # start_time and stop_time take lists of form [seconds,frames] to calculate times
 # If is_encoding is true, encoding will begin a new block at the start frame. Otherwise, it will assume that the frame is in the middle of a block.
+# start_time and stop_time are lists [seconds,frames_within_second]
 # Note that this value only matters for partial extraction
-def transform_video(infile,outfile,num_passes=4,is_encoding=True,start_time=[],stop_time=[]):
+def transform_video(infile,outfile,num_passes=4,is_encoding=True,start_time=[],stop_time=[],encode_audio=True):
+    
+    import numpy as np
+    import cv2
     
     # Prevent nastiness...
     if num_passes < 1:
@@ -32,14 +49,31 @@ def transform_video(infile,outfile,num_passes=4,is_encoding=True,start_time=[],s
     if num_passes > frame_width:
         num_passes = frame_width #SLOW
 
+    outext = outfile.split('.')[-1]
+
     # Prepare codec writer (AVI is best cross-platform)
-    fourcc = cv2.cv.CV_FOURCC(*'XVID')
-    output_writer = cv2.VideoWriter(outfile,fourcc,fps,(frame_width,frame_height))
+    if outext == 'avi':
+        fourcc = cv2.cv.CV_FOURCC(*'XVID')  
+    elif outext == 'm4v':
+        fourcc = cv2.cv.CV_FOURCC(*'MP4V')
+    #elif outext == 'mp4':
+    #    fourcc = cv2.cv.CV_FOURCC(*'FMP4')
+    else:
+        print 'Error: Output extension not supported'
+        return
+        
+    tmpfile = 'obfuscate_tmp.{0}'.format(outext)
+    print tmpfile
+    output_writer = cv2.VideoWriter(tmpfile if encode_audio else outfile,fourcc,fps,(frame_width,frame_height))
+
+    if (start_time != [] and start_time[1] > fps) or (stop_time != [] and stop_time[1] > fps):
+        print 'Error: Cannot specify frame count greater than FPS'
+        return
 
     start_frame = int(start_time[0] * fps) + start_time[1] if start_time != [] else 0
     stop_frame = int(stop_time[0] * fps) + 1 + stop_time[1] if stop_time != [] else -1 # to include the stop frame
     
-    if (stop_frame > 0 and stop_frame <= start_frame):
+    if stop_frame > 0 and stop_frame <= start_frame:
         return
 
     # Calculate number of columns to read per pass
@@ -98,19 +132,30 @@ def transform_video(infile,outfile,num_passes=4,is_encoding=True,start_time=[],s
         
     # Clean up
     input_reader.release()
-    output_writer.release()  
+    output_writer.release()
     
-    
-def valid_infile(string):
+    if encode_audio:
+        import subprocess, os
+        if 'win32' in sys.platform:
+            audio_command = ['ffmpeg.exe']
+        else:
+            audio_command = ['ffmpeg']
+        if start_time != []:
+            audio_command += ['-ss',time_frame_to_ffmpeg(start_time,fps)]
+        if stop_time != []:    
+            audio_command += ['-t', difference_to_ffmpeg(start_time,stop_time,fps)]
+        
+        audio_command += ['-i',infile,'-i', tmpfile, '-map', '1:v', '-map', '0:a', '-c:a',
+                            'mp3' if outext == 'avi' else 'aac', '-c:v', 'copy', 
+                            '-strict', '-2', '-loglevel', 'error', '-y', outfile]
+                            
+        subprocess.call(audio_command)
+        os.remove(tmpfile)
+
+def valid_vidfile(string):
     valid_extensions = ['.mp4','.m4v','.avi']
     if string[-4:] not in valid_extensions or len(string) < 5:
         raise argparse.ArgumentTypeError('{0} is not a valid extension'.format(string[-4:]))
-    else:
-        return string
-
-def avifile(string):
-    if string[-4:] != '.avi' or len(string) < 5:
-        raise argparse.ArgumentTypeError('Extension of output file must be .avi')
     else:
         return string
         
@@ -134,20 +179,20 @@ def valid_timecode(string):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Obfuscate or De-Obfuscate a video.\n Obfuscates by default.')
     infile_help = 'File to process - must be .avi,.mp4, or .m4v (only .avi on some systems)'
-    outfile_help = 'Output file name - must be .avi'
+    outfile_help = 'Output file name - must be .avi or .m4v (only .avi on some systems)'
     passes_help = 'Number of passes to make over input data. More means less memory but slower'
     start_help = 'Timecode to start encoding at (default 0). Form HH:MM:SS:FF (FF is frame within second)'
     stop_help = 'Timecode to stop at (default end of video). Form HH:MM:SS:FF (FF is frame within second)'
     decode_help = 'Set this flag if you are de-obfuscating a video with custom start/stop. Otherwise frames will be mis-aligned'
+    noaudio_help = 'Set this flag to disable audio copying'
     
-    parser.add_argument('infile',action='store', type=valid_infile, help=infile_help)
-    parser.add_argument('outfile',action='store', type=avifile, help=outfile_help)
+    parser.add_argument('infile',action='store', type=valid_vidfile, help=infile_help)
+    parser.add_argument('outfile',action='store', type=valid_vidfile, help=outfile_help)
     parser.add_argument('--passes', '-p', action='store', type=int, default=4, help=passes_help)
     parser.add_argument('--start', '-s', action='store', type=valid_timecode, default=[], help=start_help)
     parser.add_argument('--end', '-e', action='store', type=valid_timecode, default=[],help=stop_help)
     parser.add_argument('--decode' ,'-d',action='store_false',dest='encode',help=decode_help) # Actually stores whether we are encoding or decoding
+    parser.add_argument('--noaudio',action='store_false',dest='audio',help=noaudio_help)
     args = parser.parse_args()
     
-    import numpy as np
-    import cv2
-    transform_video(args.infile,args.outfile,args.passes,args.encode,args.start,args.end)
+    transform_video(args.infile,args.outfile,args.passes,args.encode,args.start,args.end,args.audio)
