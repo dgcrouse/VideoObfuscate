@@ -172,7 +172,7 @@ def transform_video(infile,outfile,num_passes=4,is_encoding=True,start_time=[],s
             found_fdk = False
             found_faac = False
             
-            p = subprocess.Popen([ffmpeg_bin,'-codecs'],stdout=subprocess.PIPE)
+            p = subprocess.Popen([ffmpeg_bin,'-codecs'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             codecs,_ = p.communicate()
             
             for line in codecs:
