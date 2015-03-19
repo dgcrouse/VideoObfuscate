@@ -30,14 +30,15 @@ def difference_to_ffmpeg(t1,t2,framerate):
 def transform_video(infile,outfile,num_passes=4,is_encoding=True,start_time=[],stop_time=[],encode_audio=True,verbose=False):
     
     import numpy as np
-    import cv2
+    from cv2 import VideoCapture, VideoWriter
+    from cv2.cv import CV_FOURCC
     
     # Prevent nastiness...
     if num_passes < 1:
         num_passes = 1
         
     # Init video capture
-    input_reader = cv2.VideoCapture()
+    input_reader = VideoCapture()
     if input_reader.open(infile) == -1:
         return
 
@@ -54,9 +55,9 @@ def transform_video(infile,outfile,num_passes=4,is_encoding=True,start_time=[],s
 
     # Prepare codec writer (AVI is best cross-platform)
     if outext == 'avi':
-        fourcc = cv2.cv.CV_FOURCC(*'XVID')  
+        fourcc = CV_FOURCC(*'XVID')  
     elif outext == 'm4v':
-        fourcc = cv2.cv.CV_FOURCC(*'MP4V')
+        fourcc = CV_FOURCC(*'MP4V')
     #elif outext == 'mp4':
     #    fourcc = cv2.cv.CV_FOURCC(*'FMP4')
     else:
@@ -64,7 +65,7 @@ def transform_video(infile,outfile,num_passes=4,is_encoding=True,start_time=[],s
         return
         
     tmpfile = 'obfuscate_tmp.{0}'.format(outext)
-    output_writer = cv2.VideoWriter(tmpfile if encode_audio else outfile,fourcc,fps,(frame_width,frame_height))
+    output_writer = VideoWriter(tmpfile if encode_audio else outfile,fourcc,fps,(frame_width,frame_height))
 
     if (start_time != [] and start_time[1] > fps) or (stop_time != [] and stop_time[1] > fps):
         print 'Error: Cannot specify frame count greater than FPS'
@@ -172,7 +173,7 @@ def transform_video(infile,outfile,num_passes=4,is_encoding=True,start_time=[],s
             found_faac = False
             
             p = subprocess.Popen([ffmpeg_bin,'-codecs'],stdout=subprocess.PIPE)
-            codecs,_ = subprocess.communicate()
+            codecs,_ = p.communicate()
             
             for line in codecs:
                 data = line.split()
@@ -184,6 +185,7 @@ def transform_video(infile,outfile,num_passes=4,is_encoding=True,start_time=[],s
                         break
                     elif 'libfaac' in data[1]:
                         found_faac = True
+                        # Keep looking for libfdk
             
             if found_fdk:
                 # FDK AAC, best
@@ -201,7 +203,7 @@ def transform_video(infile,outfile,num_passes=4,is_encoding=True,start_time=[],s
         audio_command += ['-c:v', 'copy', '-write_xing', '0', '-y', outfile]
                             
         subprocess.call(audio_command)
-        #os.remove(tmpfile)
+        os.remove(tmpfile)
 
 def valid_vidfile(string):
     valid_extensions = ['.mp4','.m4v','.avi']
